@@ -4,7 +4,6 @@ import android.app.*
 import android.os.*
 import android.content.*
 import android.net.Uri
-import android.telephony.SmsManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.*
@@ -181,6 +180,6 @@ class MainActivity:Activity(){
  private fun addNotification(title:String,message:String=""){val a=notificationsA();a.put(JSONObject().put("id",uid()).put("title",title).put("message",message).put("date",day()).put("time",clockTime()).put("status","جديد"));save("notifications",a)}
  private fun settingsPro(){title("الإعدادات","اسم البئر، سعر التشغيل، أتعاب الإدارة والصلاحيات.");val n=field("اسم البئر",p.getString("name","البئر الذكي")!!);val h=field("سعر ساعة التشغيل",p.getString("hour","3000")!!,true);val modes=listOf("مبلغ ثابت شهرياً","مبلغ ثابت يومياً","نسبة من الإيرادات","نسبة من الأرباح");val mode=Spinner(this);mode.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,modes);mode.setSelection(max(0,modes.indexOf(managerMode())));val v=field("قيمة الأتعاب / النسبة",p.getString("manager_value","5")!!,true);val role=Spinner(this);role.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,listOf("المالك","المشرف","العامل","الشريك","العميل"));listOf(n,h,mode,v,role).forEach{body.addView(it,LinearLayout.LayoutParams(-1,dp(48)));gap(5)};addBtn("حفظ الإعدادات",blue){p.edit().putString("name",n.text.toString()).putString("hour",h.text.toString()).putString("manager_mode",mode.selectedItem.toString()).putString("manager_value",v.text.toString()).apply();currentRole=role.selectedItem.toString();toast("تم الحفظ")};add("تُسمى هذه العملية داخل النظام «أتعاب الإدارة / عمولة الإدارة» لتوضيح طبيعتها المحاسبية.",11,Color.GRAY,false)}
  private fun sendWhatsApp(phoneRaw:String,message:String){val phone=phoneRaw.trim().replace("+","").replace(" ","");if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://wa.me/$phone?text="+Uri.encode(message))))}catch(_:Exception){toast("تعذر فتح WhatsApp")}}
- private fun sendSms(phone:String,message:String){if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{if(Build.VERSION.SDK_INT>=23&&checkSelfPermission(android.Manifest.permission.SEND_SMS)!=android.content.pm.PackageManager.PERMISSION_GRANTED){requestPermissions(arrayOf(android.Manifest.permission.SEND_SMS),700);toast("اسمح للتطبيق بإرسال SMS");return};SmsManager.getDefault().sendTextMessage(phone,null,message,null,null);toast("تم إرسال SMS")}catch(_:Exception){toast("تعذر إرسال SMS")}}
+ private fun sendSms(phone:String,message:String){if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{val i=Intent(Intent.ACTION_SENDTO).apply{data=Uri.parse("smsto:"+Uri.encode(phone));putExtra("sms_body",message)};startActivity(i)}catch(_:Exception){toast("لا يوجد تطبيق SMS متاح")}}
 
 }

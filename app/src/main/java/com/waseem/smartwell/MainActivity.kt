@@ -7,7 +7,6 @@ import android.net.Uri
 import android.graphics.Color
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import androidx.core.app.NotificationCompat
 import android.graphics.drawable.GradientDrawable
 import android.view.*
 import android.widget.*
@@ -223,7 +222,7 @@ class MainActivity:Activity(){
  private fun createAlertChannel(){if(Build.VERSION.SDK_INT>=26){val c=NotificationChannel(NOTIFY_CHANNEL,"تنبيهات البئر",NotificationManager.IMPORTANCE_HIGH);c.description="تنبيهات الزيت والديزل والصيانة";getSystemService(NotificationManager::class.java).createNotificationChannel(c)}}
  private fun notifyAlerts(){
   if(Build.VERSION.SDK_INT>=33&&checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)return
-  wellAlerts().forEachIndexed{i,msg->if(!p.getBoolean("alert_"+i,false)){p.edit().putBoolean("alert_"+i,true).apply();getSystemService(NotificationManager::class.java).notify(100+i,NotificationCompat.Builder(this,NOTIFY_CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle("تنبيه بئر القطع").setContentText(msg).setStyle(NotificationCompat.BigTextStyle().bigText(msg)).setAutoCancel(true).build())}}
+  wellAlerts().forEachIndexed{i,msg->if(!p.getBoolean("alert_"+i,false)){p.edit().putBoolean("alert_"+i,true).apply();val nb=if(Build.VERSION.SDK_INT>=26)Notification.Builder(this,NOTIFY_CHANNEL) else Notification.Builder(this);nb.setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle("تنبيه بئر القطع").setContentText(msg).setAutoCancel(true);getSystemService(NotificationManager::class.java).notify(100+i,nb.build())}}
  }
  private fun wellScreen(){
   screen("البئر"){title("إدارة البئر",p.getString("name","بئر القطع")+" · المشرف "+p.getString("supervisor","عبد الواحد الفرح"))

@@ -41,7 +41,7 @@ class MainActivity:Activity(){
   val sc=ScrollView(this);body=LinearLayout(this);body.orientation=LinearLayout.VERTICAL;body.setPadding(dp(14),dp(14),dp(14),dp(8));body.layoutDirection=View.LAYOUT_DIRECTION_RTL;sc.addView(body);root.addView(sc,LinearLayout.LayoutParams(-1,0,1f))
   val nav=LinearLayout(this);nav.setBackgroundColor(Color.WHITE)
   val names=listOf("الرئيسية","المواعيد","التشغيل","الحسابات","المزيد")
-  val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{bookingsScreen)},{pumping)},{reports)},{more})
+  val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{bookingsScreen()},{pumping()},{reports()},{more()})
   for(i in names.indices){val x=button(names[i],Color.WHITE,if(names[i]==t)blue else Color.DKGRAY);x.setOnClickListener{fs[i]()};nav.addView(x,LinearLayout.LayoutParams(0,dp(48),1f))}
   root.addView(nav);setContentView(root);f()
  }

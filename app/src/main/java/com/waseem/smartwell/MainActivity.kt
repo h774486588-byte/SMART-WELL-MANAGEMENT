@@ -5,6 +5,9 @@ import android.os.*
 import android.content.*
 import android.net.Uri
 import android.graphics.Color
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
 import android.graphics.drawable.GradientDrawable
 import android.view.*
 import android.widget.*
@@ -19,31 +22,43 @@ class MainActivity:Activity(){
  private val p by lazy{getSharedPreferences("smart_well",0)}
  private val navy=Color.rgb(8,17,31);private val blue=Color.rgb(22,119,255);private val green=Color.rgb(16,130,95);private val red=Color.rgb(196,55,55);private val orange=Color.rgb(220,137,34);private val bg=Color.rgb(245,248,252)
  private var currentRole="المالك"
+ private val NOTIFY_CHANNEL="smart_well_alerts"
  private lateinit var body:LinearLayout;private var started=0L;private var active="";private val h=Handler(Looper.getMainLooper())
 
- override fun onCreate(b:Bundle?){super.onCreate(b);window.statusBarColor=navy;window.navigationBarColor=navy;screen("لوحة التحكم"){dashboard()}}
+ override fun onCreate(b:Bundle?){
+  super.onCreate(b);window.statusBarColor=navy;window.navigationBarColor=navy
+  if(!p.contains("name"))p.edit().putString("name","بئر القطع").apply()
+  if(!p.contains("supervisor"))p.edit().putString("supervisor","عبد الواحد الفرح").apply()
+  if(!p.contains("oil_interval"))p.edit().putString("oil_interval","250").apply()
+  createAlertChannel();screen("لوحة التحكم"){dashboard()}
+ }
 
  private fun screen(t:String,f:()->Unit){
   val root=LinearLayout(this);root.orientation=LinearLayout.VERTICAL;root.setBackgroundColor(bg);root.layoutDirection=View.LAYOUT_DIRECTION_RTL
   val head=LinearLayout(this);head.setPadding(dp(15),dp(7),dp(15),dp(7));head.setBackgroundColor(Color.WHITE)
-  val title=TextView(this);title.text="البئر الذكي";title.textSize=19f;title.setTextColor(navy);title.setTypeface(null,1);head.addView(title,LinearLayout.LayoutParams(0,dp(50),1f))
+  val title=TextView(this);title.text=p.getString("name","بئر القطع")!!;title.textSize=19f;title.setTextColor(navy);title.setTypeface(null,1);head.addView(title,LinearLayout.LayoutParams(0,dp(50),1f))
   val bk=button("نسخة",Color.WHITE,navy);bk.setOnClickListener{backup()};head.addView(bk,LinearLayout.LayoutParams(dp(65),dp(40)));root.addView(head)
   val sc=ScrollView(this);body=LinearLayout(this);body.orientation=LinearLayout.VERTICAL;body.setPadding(dp(14),dp(14),dp(14),dp(8));body.layoutDirection=View.LAYOUT_DIRECTION_RTL;sc.addView(body);root.addView(sc,LinearLayout.LayoutParams(-1,0,1f))
   val nav=LinearLayout(this);nav.setBackgroundColor(Color.WHITE)
-  val names=listOf("الرئيسية","الحجوزات","الضخ","العملاء","المزيد");val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{screen("الحجوزات"){bookingsScreen()}},{screen("الضخ"){pumping()}},{screen("العملاء"){customersScreen()}},{more()})
+  val names=listOf("الرئيسية","المزارعون","الشركاء","البئر","التقارير")
+  val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{screen("المزارعون"){customersScreen()}},{screen("الشركاء"){partnersScreen()}},{screen("البئر"){wellScreen()}},{screen("التقارير"){reports()}})
   for(i in names.indices){val x=button(names[i],Color.WHITE,if(names[i]==t)blue else Color.DKGRAY);x.setOnClickListener{fs[i]()};nav.addView(x,LinearLayout.LayoutParams(0,dp(48),1f))}
   root.addView(nav);setContentView(root);f()
  }
 
  private fun dashboard(){
-  add("لوحة التحكم",24,navy,true);add(date(),11,Color.GRAY,false);gap(8)
+  add("بئر القطع",24,navy,true);add("المشرف: عبد الواحد الفرح",12,Color.GRAY,false);add(date(),10,Color.GRAY,false);gap(8)
   val s=todaySales();val rev=s.sumOf{it.optDouble("total")};val pay=todayPay();val exp=todayExp();val min=s.sumOf{it.optInt("minutes")}
   row{stat("إيرادات اليوم",money(rev),blue);stat("التحصيل",money(pay),green)};row{stat("ساعات التشغيل",String.format(Locale.US,"%.1f",min/60.0),navy);stat("مصروفات اليوم",money(exp),red)}
-  gap(8);add("إجراءات سريعة",16,navy,true);row{action("＋ عميل"){customerDialog()};action("＋ حجز"){bookingDialog()}};row{action("▶ بدء الضخ"){startPump()};action("﷼ تحصيل"){paymentDialog()}}
-  panel("الحجوزات القادمة"){val x=bookings().filter{it.optString("date")>=day()}.take(5);if(x.isEmpty())empty("لا توجد حجوزات.");x.forEach{b->line(find(b.optString("customerId"))?.optString("name")?:"عميل",b.optString("date")+" · "+b.optString("start"),"مجدول")}}
+  gap(8);add("الإدارة الرئيسية",16,navy,true)
+  row{action("👨‍🌾 إدارة المزارعين"){customersScreen()};action("👥 إدارة الشركاء"){partnersScreen()}}
+  row{action("💧 إدارة البئر"){wellScreen()};action("📊 التقارير"){reports()}}
+  row{action("📅 المواعيد"){bookingsScreen()};action("▶ تشغيل البئر"){pumping()}}
+  panel("تنبيهات البئر"){val alerts=wellAlerts();if(alerts.isEmpty())empty("لا توجد تنبيهات حالياً.");alerts.forEach{add(it,12,red,true);gap(3)}}
+  panel("الحجوزات القادمة"){val x=bookings().filter{it.optString("date")>=day()}.take(5);if(x.isEmpty())empty("لا توجد حجوزات.");x.forEach{b->line(find(b.optString("customerId"))?.optString("name")?:"مزارع",b.optString("date")+" · "+b.optString("start")+" - "+b.optString("end"),"مجدول")}}
   panel("أعلى الديون"){val x=customers().map{it to balance(it.optString("id"))}.filter{it.second>0}.sortedByDescending{it.second}.take(5);if(x.isEmpty())empty("لا توجد ديون.");x.forEach{line(it.first.optString("name"),"الرصيد المستحق",money(it.second))}}
+  notifyAlerts()
  }
-
  private fun bookingsScreen(){
   title("الحجوزات والأدوار","جدولة أدوار السقي ومتابعة الحالة.");addBtn("＋ حجز جديد",blue){bookingDialog()}
   panel("الحجوزات"){val x=bookings().sortedByDescending{it.optString("date")};if(x.isEmpty())empty("لا توجد حجوزات.");x.forEach{b->val c=find(b.optString("customerId"));line(c?.optString("name")?:"عميل",b.optString("date")+" · "+b.optString("start")+" - "+b.optString("end"),b.optString("status"));if(b.optString("status")!="مكتمل")addBtn("✓ إكمال",green){b.put("status","مكتمل");save("bookings",bookingsA());screen("الحجوزات"){bookingsScreen()}}}}

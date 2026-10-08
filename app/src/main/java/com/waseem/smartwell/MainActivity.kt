@@ -40,26 +40,89 @@ class MainActivity:Activity(){
   val bk=button("نسخة",Color.WHITE,navy);bk.setOnClickListener{backup()};head.addView(bk,LinearLayout.LayoutParams(dp(65),dp(40)));root.addView(head)
   val sc=ScrollView(this);body=LinearLayout(this);body.orientation=LinearLayout.VERTICAL;body.setPadding(dp(14),dp(14),dp(14),dp(8));body.layoutDirection=View.LAYOUT_DIRECTION_RTL;sc.addView(body);root.addView(sc,LinearLayout.LayoutParams(-1,0,1f))
   val nav=LinearLayout(this);nav.setBackgroundColor(Color.WHITE)
-  val names=listOf("الرئيسية","المزارعون","الشركاء","البئر","التقارير")
-  val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{screen("المزارعون"){customersScreen()}},{screen("الشركاء"){partnersScreen()}},{screen("البئر"){wellScreen()}},{screen("التقارير"){reports()}})
+  val names=listOf("الرئيسية","المواعيد","التشغيل","الحسابات","المزيد")
+  val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{bookingsScreen)},{pumping)},{reports)},{more})
   for(i in names.indices){val x=button(names[i],Color.WHITE,if(names[i]==t)blue else Color.DKGRAY);x.setOnClickListener{fs[i]()};nav.addView(x,LinearLayout.LayoutParams(0,dp(48),1f))}
   root.addView(nav);setContentView(root);f()
  }
 
  private fun dashboard(){
-  add(p.getString("name","بئر القطع")!!,24,navy,true);add("المشرف: "+p.getString("supervisor","عبد الواحد الفرح"),12,Color.GRAY,false);add(date(),10,Color.GRAY,false);gap(8)
-  val s=todaySales();val rev=s.sumOf{it.optDouble("total")};val pay=todayPay();val exp=todayExp();val min=s.sumOf{it.optInt("minutes")}
-  row{stat("إيرادات اليوم",money(rev),blue);stat("التحصيل",money(pay),green)};row{stat("ساعات التشغيل",String.format(Locale.US,"%.1f",min/60.0),navy);stat("مصروفات اليوم",money(exp),red)}
-  gap(8);add("الإدارة الرئيسية",17,navy,true)
-  gap(5)
-  row{action("👥 إدارة الشركاء"){partnersScreen()};action("👨‍🌾 إدارة المزارعين"){customersScreen()}}
-  row{action("💧 إدارة البئر والمحرك"){wellScreen()};action("👷 إدارة العامل"){workersScreen()}}
-  gap(8)
-  panel("اختصارات التشغيل"){row{action("📅 المواعيد"){bookingsScreen()};action("▶ تشغيل البئر"){pumping()}}}
-  panel("التقارير والتنبيهات"){row{action("📊 التقارير"){reports()};action("🔔 الإشعارات"){notificationsScreen()}}}
-  panel("تنبيهات البئر"){val alerts=wellAlerts();if(alerts.isEmpty())empty("لا توجد تنبيهات حالياً.");alerts.forEach{add(it,12,red,true);gap(3)}}
-  panel("الحجوزات القادمة"){val x=bookings().filter{it.optString("date")>=day()}.take(5);if(x.isEmpty())empty("لا توجد حجوزات.");x.forEach{b->line(find(b.optString("customerId"))?.optString("name")?:"مزارع",b.optString("date")+" · "+b.optString("start")+" - "+b.optString("end"),"مجدول")}}
-  panel("أعلى الديون"){val x=customers().map{it to balance(it.optString("id"))}.filter{it.second>0}.sortedByDescending{it.second}.take(5);if(x.isEmpty())empty("لا توجد ديون.");x.forEach{line(it.first.optString("name"),"الرصيد المستحق",money(it.second))}}
+  add("لوحة التحكم",24,navy,true)
+  add(p.getString("name","بئر القطع")!!,13,Color.GRAY,false)
+  add("المشرف: "+p.getString("supervisor","عبد الواحد الفرح"),11,Color.GRAY,false)
+  gap(10)
+
+  val sales=todaySales()
+  val revenue=sales.sumOf{it.optDouble("total")}
+  val collected=todayPay()
+  val expenses=todayExp()
+  val hours=sales.sumOf{it.optInt("minutes")}/60.0
+  val diesel=dieselStock()
+
+  panel("ملخص اليوم"){
+   row{
+    stat("إيرادات اليوم",money(revenue),blue)
+    stat("التحصيل",money(collected),green)
+   }
+   row{
+    stat("ساعات التشغيل",String.format(Locale.US,"%.1f",hours),navy)
+    stat("مصروفات اليوم",money(expenses),red)
+   }
+  }
+
+  panel("العمليات السريعة"){
+   row{action("▶ تشغيل البئر"){pumping()};action("📅 المواعيد"){bookingsScreen()}}
+   row{action("👨‍🌾 المزارعون"){customersScreen()};action("🤝 الشركاء"){partnersScreen()}}
+   row{action("👷 العاملون"){workersScreen()};action("💰 الحسابات"){reports()}}
+  }
+
+  panel("إدارة البئر"){
+   row{action("⚙ البئر والمحرك"){wellScreen()};action("⛽ الديزل"){dieselScreen()}}
+   row{action("🛢️ زيت المحرك"){oilScreen()};action("❄ التبريد"){coolingScreen()}}
+   row{action("🔧 الصيانة"){maintenance()};action("📈 ساعات التشغيل"){pumping()}}
+  }
+
+  panel("المواعيد القادمة"){
+   val x=bookings().filter{it.optString("date")>=day()}.sortedWith(compareBy({it.optString("date")},{it.optString("start")})).take(4)
+   if(x.isEmpty()) empty("لا توجد مواعيد قادمة.")
+   x.forEach{b->
+    val c=find(b.optString("customerId"))
+    val w=workers().firstOrNull{it.optString("id")==b.optString("workerId")}
+    line(c?.optString("name")?:"مزارع",b.optString("date")+" · "+b.optString("start")+" - "+b.optString("end"),b.optString("status","معلق"))
+    add("العامل: "+(w?.optString("name")?:"غير محدد")+" · "+if(b.optBoolean("customerNotified",false))"إشعار العميل: تم" else "الإشعار: لم يُرسل",10,Color.GRAY,false)
+   }
+  }
+
+  panel("حالة البئر"){
+   val alerts=wellAlerts()
+   if(alerts.isEmpty()) add("🟢 البئر يعمل بدون تنبيهات حالية",12,green,true)
+   alerts.forEach{add(it,12,red,true)}
+   row{
+    stat("رصيد الديزل",String.format(Locale.US,"%.1f لتر",diesel),orange)
+    stat("العملاء",customers().size.toString(),blue)
+   }
+  }
+
+  panel("الإدارة المالية"){
+   row{action("💵 الإيرادات"){revenuesScreen()};action("💸 المصروفات"){expensesScreen()}}
+   row{action("﷼ التحصيل والديون"){screen("الحسابات"){payments()}};action("📊 الأرباح والخسائر"){profitLossScreen()}}
+  }
+
+  panel("الشركاء"){
+   val ps=partners()
+   if(ps.isEmpty()) empty("لم تتم إضافة شركاء بعد.")
+   ps.take(4).forEach{q->
+    val share=partnerShare(q.optString("id"))*100
+    line(q.optString("name"),String.format(Locale.US,"%.1f%% ملكية",share),money(partnerAdvanceShare(q.optString("id")))+" من التقديمات")
+   }
+  }
+
+  panel("التنبيهات"){
+   val ns=notifications().reversed().take(3)
+   if(ns.isEmpty()) empty("لا توجد إشعارات جديدة.")
+   ns.forEach{n->line(n.optString("title"),n.optString("date")+" · "+n.optString("time"),n.optString("status","جديد"))}
+   addBtn("عرض مركز الإشعارات",Color.DKGRAY){notificationsScreen()}
+  }
   notifyAlerts()
  }
  private fun bookingsScreen(){

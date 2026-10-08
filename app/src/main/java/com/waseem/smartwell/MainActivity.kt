@@ -50,10 +50,13 @@ class MainActivity:Activity(){
   add(p.getString("name","بئر القطع")!!,24,navy,true);add("المشرف: "+p.getString("supervisor","عبد الواحد الفرح"),12,Color.GRAY,false);add(date(),10,Color.GRAY,false);gap(8)
   val s=todaySales();val rev=s.sumOf{it.optDouble("total")};val pay=todayPay();val exp=todayExp();val min=s.sumOf{it.optInt("minutes")}
   row{stat("إيرادات اليوم",money(rev),blue);stat("التحصيل",money(pay),green)};row{stat("ساعات التشغيل",String.format(Locale.US,"%.1f",min/60.0),navy);stat("مصروفات اليوم",money(exp),red)}
-  gap(8);add("الإدارة الرئيسية",16,navy,true)
-  row{action("👨‍🌾 إدارة المزارعين"){customersScreen()};action("👥 إدارة الشركاء"){partnersScreen()}}
-  row{action("💧 إدارة البئر"){wellScreen()};action("📊 التقارير"){reports()}}
-  row{action("📅 المواعيد"){bookingsScreen()};action("▶ تشغيل البئر"){pumping()}}
+  gap(8);add("الإدارة الرئيسية",17,navy,true)
+  gap(5)
+  row{action("👥 إدارة الشركاء"){partnersScreen()};action("👨‍🌾 إدارة المزارعين"){customersScreen()}}
+  row{action("💧 إدارة البئر والمحرك"){wellScreen()};action("👷 إدارة العامل"){workersScreen()}}
+  gap(8)
+  panel("اختصارات التشغيل"){row{action("📅 المواعيد"){bookingsScreen()};action("▶ تشغيل البئر"){pumping()}}}
+  panel("التقارير والتنبيهات"){row{action("📊 التقارير"){reports()};action("🔔 الإشعارات"){notificationsScreen()}}}
   panel("تنبيهات البئر"){val alerts=wellAlerts();if(alerts.isEmpty())empty("لا توجد تنبيهات حالياً.");alerts.forEach{add(it,12,red,true);gap(3)}}
   panel("الحجوزات القادمة"){val x=bookings().filter{it.optString("date")>=day()}.take(5);if(x.isEmpty())empty("لا توجد حجوزات.");x.forEach{b->line(find(b.optString("customerId"))?.optString("name")?:"مزارع",b.optString("date")+" · "+b.optString("start")+" - "+b.optString("end"),"مجدول")}}
   panel("أعلى الديون"){val x=customers().map{it to balance(it.optString("id"))}.filter{it.second>0}.sortedByDescending{it.second}.take(5);if(x.isEmpty())empty("لا توجد ديون.");x.forEach{line(it.first.optString("name"),"الرصيد المستحق",money(it.second))}}

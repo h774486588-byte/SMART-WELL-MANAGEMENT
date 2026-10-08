@@ -17,7 +17,7 @@ import kotlin.math.max
 
 class MainActivity:Activity(){
  private val p by lazy{getSharedPreferences("smart_well",0)}
- private val navy=Color.rgb(8,17,31);private val blue=Color.rgb(22,119,255);private val green=Color.rgb(16,130,95);private val red=Color.rgb(196,55,55);private val bg=Color.rgb(245,248,252)
+ private val navy=Color.rgb(8,17,31);private val blue=Color.rgb(22,119,255);private val green=Color.rgb(16,130,95);private val red=Color.rgb(196,55,55);private val orange=Color.rgb(220,137,34);private val bg=Color.rgb(245,248,252)
  private var currentRole="المالك"
  private lateinit var body:LinearLayout;private var started=0L;private var active="";private val h=Handler(Looper.getMainLooper())
 

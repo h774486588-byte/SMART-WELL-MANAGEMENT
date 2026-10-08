@@ -30,7 +30,7 @@ class MainActivity:Activity(){
   if(!p.contains("name"))p.edit().putString("name","بئر القطع").apply()
   if(!p.contains("supervisor"))p.edit().putString("supervisor","عبد الواحد الفرح").apply()
   if(!p.contains("oil_interval"))p.edit().putString("oil_interval","250").apply()
-  createAlertChannel();screen("لوحة التحكم"){dashboard()}
+  createAlertChannel();if(Build.VERSION.SDK_INT>=33&&checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"),800);screen("لوحة التحكم"){dashboard()}
  }
 
  private fun screen(t:String,f:()->Unit){

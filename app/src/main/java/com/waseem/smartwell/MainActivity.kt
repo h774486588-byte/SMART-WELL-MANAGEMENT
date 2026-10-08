@@ -281,7 +281,17 @@ class MainActivity:Activity(){
   AlertDialog.Builder(this).setTitle(if(buy)"شراء ديزل" else "استهلاك ديزل").setView(box).setPositiveButton("حفظ"){_,_->val liters=l.text.toString().toDoubleOrNull()?:0.0;if(liters<=0){toast("أدخل كمية صحيحة");return@setPositiveButton};val pr=if(buy)price.text.toString().toDoubleOrNull()?:0.0 else 0.0;val total=liters*pr;val a=dieselA();a.put(JSONObject().put("id",uid()).put("type",if(buy)"شراء" else "استهلاك").put("date",day()).put("liters",liters).put("price",pr).put("total",total).put("note",note.text.toString()));save("diesel_logs",a);if(buy){val e=expensesA();e.put(JSONObject().put("id",uid()).put("date",day()).put("desc","شراء ديزل").put("amount",total));save("expenses",e)};wellScreen()}.setNegativeButton("إلغاء",null).show()
  }
  private fun coolingScreen(){
-  screen("البئر"){title("ساعات التبريد اليومية","تسجيل بداية ونهاية كل فترة تبريد للمحرك.");addBtn("＋ تسجيل فترة تبريد",blue){coolingDialog()};panel("سجل اليوم"){val x=coolingLogs().filter{it.optString("date")==day()};if(x.isEmpty())empty("لم تسجل فترات تبريد اليوم.");x.forEach{line(it.optString("date"),it.optString("start")+" - "+it.optString("end"),String.format(Locale.US,"%.2f ساعة",it.optInt("minutes")/60.0)))};add("إجمالي اليوم: "+String.format(Locale.US,"%.2f ساعة",x.sumOf{it.optInt("minutes")}/60.0),15,navy,true)}}
+  screen("البئر"){
+   title("ساعات التبريد اليومية","تسجيل بداية ونهاية كل فترة تبريد للمحرك.")
+   addBtn("＋ تسجيل فترة تبريد",blue){coolingDialog()}
+   panel("سجل اليوم"){
+    val x=coolingLogs().filter{it.optString("date")==day()}
+    if(x.isEmpty()) empty("لم تسجل فترات تبريد اليوم.")
+    x.forEach{r->line(r.optString("date"),r.optString("start")+" - "+r.optString("end"),String.format(Locale.US,"%.2f ساعة",r.optInt("minutes")/60.0))}
+    val total=x.sumOf{it.optInt("minutes")}/60.0
+    add("إجمالي اليوم: "+String.format(Locale.US,"%.2f ساعة",total),15,navy,true)
+   }
+  }
  }
  private fun coolingDialog(){
   val st=field("من الساعة","12:00");val en=field("إلى الساعة","13:00");val note=field("ملاحظات");val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;listOf(st,en,note).forEach{box.addView(it);space(box,4)}

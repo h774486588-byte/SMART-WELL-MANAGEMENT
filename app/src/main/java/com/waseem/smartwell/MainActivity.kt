@@ -21,6 +21,8 @@ class MainActivity:Activity(){
  private val p by lazy{getSharedPreferences("smart_well",0)}
  private val navy=Color.rgb(8,17,31);private val blue=Color.rgb(22,119,255);private val green=Color.rgb(16,130,95);private val red=Color.rgb(196,55,55);private val orange=Color.rgb(220,137,34);private val bg=Color.rgb(245,248,252)
  private var currentRole="المالك"
+ private val DEVELOPER="وسيم الفرح"
+ private val DEVELOPER_ID="774486588"
  private val NOTIFY_CHANNEL="smart_well_alerts"
  private lateinit var body:LinearLayout;private var started=0L;private var active="";private val h=Handler(Looper.getMainLooper())
 
@@ -35,17 +37,28 @@ class MainActivity:Activity(){
 
  private fun screen(t:String,f:()->Unit){
   val root=LinearLayout(this);root.orientation=LinearLayout.VERTICAL;root.setBackgroundColor(bg);root.layoutDirection=View.LAYOUT_DIRECTION_RTL
-  val head=LinearLayout(this);head.setPadding(dp(15),dp(7),dp(15),dp(7));head.setBackgroundColor(Color.WHITE)
-  val title=TextView(this);title.text=p.getString("name","بئر القطع")!!;title.textSize=19f;title.setTextColor(navy);title.setTypeface(null,1);head.addView(title,LinearLayout.LayoutParams(0,dp(50),1f))
-  val bk=button("نسخة",Color.WHITE,navy);bk.setOnClickListener{backup()};head.addView(bk,LinearLayout.LayoutParams(dp(65),dp(40)));root.addView(head)
-  val sc=ScrollView(this);body=LinearLayout(this);body.orientation=LinearLayout.VERTICAL;body.setPadding(dp(14),dp(14),dp(14),dp(8));body.layoutDirection=View.LAYOUT_DIRECTION_RTL;sc.addView(body);root.addView(sc,LinearLayout.LayoutParams(-1,0,1f))
-  val nav=LinearLayout(this);nav.setBackgroundColor(Color.WHITE)
-  val names=listOf("الرئيسية","المواعيد","التشغيل","الحسابات","المزيد")
-  val fs=listOf<()->Unit>({screen("لوحة التحكم"){dashboard()}},{bookingsScreen()},{pumping()},{reports()},{more()})
-  for(i in names.indices){val x=button(names[i],Color.WHITE,if(names[i]==t)blue else Color.DKGRAY);x.setOnClickListener{fs[i]()};nav.addView(x,LinearLayout.LayoutParams(0,dp(48),1f))}
+  val head=LinearLayout(this);head.setPadding(dp(14),dp(8),dp(14),dp(8));head.setGravity(Gravity.CENTER_VERTICAL)
+  head.background=GradientDrawable(GradientDrawable.Orientation.TL_BR,intArrayOf(navy,Color.rgb(17,48,82)))
+  val info=LinearLayout(this);info.orientation=LinearLayout.VERTICAL;info.gravity=Gravity.CENTER_VERTICAL
+  val titleView=TextView(this);titleView.text=t;titleView.textSize=18f;titleView.setTextColor(Color.WHITE);titleView.setTypeface(null,1)
+  val sub=TextView(this);sub.text=p.getString("name","بئر القطع")+" · "+p.getString("supervisor","عبد الواحد الفرح");sub.textSize=10f;sub.setTextColor(Color.rgb(205,220,238))
+  info.addView(titleView);info.addView(sub)
+  head.addView(info,LinearLayout.LayoutParams(0,dp(58),1f))
+  val bell=button("🔔",Color.TRANSPARENT,Color.WHITE);bell.background=round(Color.TRANSPARENT,Color.rgb(100,130,160),12);bell.setOnClickListener{notificationsScreen()};head.addView(bell,LinearLayout.LayoutParams(dp(46),dp(42)))
+  val bk=button("نسخة",Color.TRANSPARENT,Color.WHITE);bk.background=round(Color.TRANSPARENT,Color.rgb(100,130,160),12);bk.setOnClickListener{backup()};head.addView(bk,LinearLayout.LayoutParams(dp(58),dp(42)))
+  root.addView(head)
+  val sc=ScrollView(this);body=LinearLayout(this);body.orientation=LinearLayout.VERTICAL;body.setPadding(dp(14),dp(14),dp(14),dp(10));body.layoutDirection=View.LAYOUT_DIRECTION_RTL;sc.addView(body);root.addView(sc,LinearLayout.LayoutParams(-1,0,1f))
+  val nav=LinearLayout(this);nav.orientation=LinearLayout.HORIZONTAL;nav.setPadding(dp(5),dp(4),dp(5),dp(4));nav.setBackgroundColor(Color.WHITE);nav.elevation=dp(6).toFloat()
+  val names=listOf("الرئيسية","المواعيد","العمليات","الحسابات","المزيد")
+  val fs=listOf<()->Unit>({screen("الرئيسية"){dashboard()}},{bookingsScreen()},{pumping()},{reports()},{more()})
+  for(i in names.indices){
+   val activeTab=names[i]==t
+   val x=button(names[i],if(activeTab)Color.rgb(232,242,255) else Color.WHITE,if(activeTab)blue else Color.rgb(75,88,105))
+   x.textSize=10f;x.setTypeface(null,if(activeTab)1 else 0);x.background=round(if(activeTab)Color.rgb(232,242,255) else Color.WHITE,Color.TRANSPARENT,10);x.setOnClickListener{fs[i]()}
+   nav.addView(x,LinearLayout.LayoutParams(0,dp(52),1f))
+  }
   root.addView(nav);setContentView(root);f()
  }
-
  private fun dashboard(){
   add("لوحة التحكم",24,navy,true)
   add(p.getString("name","بئر القطع")!!,13,Color.GRAY,false)
@@ -173,9 +186,11 @@ class MainActivity:Activity(){
    menu("🔔 الإشعارات والرسائل","تنبيهات ورسائل WhatsApp وSMS"){notificationsScreen()};
    menu("🔧 الصيانة والأعطال","المعدات والصيانة الدورية"){screen("المزيد"){maintenance()}};
    menu("⚙ الإعدادات","أتعاب الإدارة والصلاحيات والأسعار"){screen("المزيد"){settingsPro()}};
+   menu("ℹ حول التطبيق","معلومات الإصدار وبصمة المطور"){aboutScreen()};
    menu("⇩ نسخة احتياطية","تصدير كامل للبيانات"){backup()}}
  }
 
+ private fun aboutScreen(){screen("حول التطبيق"){title("البئر الذكي","SMART WELL · نظام إدارة وتشغيل آبار المياه");panel("معلومات التطبيق"){add("البئر الذكي",22,navy,true);add("SMART WELL",13,blue,true);add("الإصدار: 1.0.0",12,Color.GRAY,false);gap(8);add("تطوير: "+DEVELOPER,13,navy,true);add("بصمة التطوير: "+DEVELOPER_ID,12,Color.GRAY,false);gap(8);add("نظام متكامل لإدارة البئر والمحرك والمزارعين والشركاء والعمال والمواعيد والحسابات والصيانة والوقود والتقارير.",12,Color.DKGRAY,false)};addBtn("العودة إلى الرئيسية",blue){screen("الرئيسية"){dashboard()}}}}
  private fun payments(){title("التحصيل والديون","متابعة المبالغ المستحقة.");addBtn("＋ تسجيل تحصيل",green){paymentDialog()};panel("الأرصدة"){val x=customers().map{it to balance(it.optString("id"))}.filter{it.second>0};if(x.isEmpty())empty("لا توجد ديون.");x.forEach{line(it.first.optString("name"),it.first.optString("phone"),money(it.second))}}}
  private fun expensesScreen(){title("المصروفات والديزل","التكاليف التشغيلية.");row{action("＋ مصروف"){expenseDialog(false)};action("＋ ديزل"){expenseDialog(true)}};panel("الحركات"){expenses().reversed().forEach{line(it.optString("desc"),it.optString("date"),money(it.optDouble("amount")))}}}
  private fun maintenance(){title("الصيانة","جدولة المهام الدورية.");addBtn("＋ مهمة صيانة",blue){maintenanceDialog()};panel("المهام"){maint().forEach{line(it.optString("title"),it.optString("due"),it.optString("status"))}}}
@@ -191,14 +206,27 @@ class MainActivity:Activity(){
  private fun expenseDialog(fuel:Boolean){val d=field(if(fuel)"بيان شراء الديزل" else "بيان المصروف");val a=field("القيمة","",true);val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;box.setPadding(dp(8),0,dp(8),0);box.addView(d);box.addView(a);AlertDialog.Builder(this).setTitle(if(fuel)"تسجيل ديزل" else "تسجيل مصروف").setView(box).setPositiveButton("حفظ"){_,_->val x=expensesA();x.put(JSONObject().put("id",uid()).put("date",day()).put("desc",d.text.toString()).put("amount",a.text.toString().toDoubleOrNull()?:0.0));save("expenses",x);expensesScreen();toast("تم الحفظ")}.setNegativeButton("إلغاء",null).show()}
  private fun maintenanceDialog(){val t=field("اسم المهمة","تغيير زيت المولد");val d=field("تاريخ الاستحقاق",day());val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;box.setPadding(dp(8),0,dp(8),0);box.addView(t);box.addView(d);AlertDialog.Builder(this).setTitle("مهمة صيانة").setView(box).setPositiveButton("حفظ"){_,_->val a=maintA();a.put(JSONObject().put("id",uid()).put("title",t.text.toString()).put("due",d.text.toString()).put("status","معلقة"));save("maintenance",a);maintenance();toast("تمت الإضافة")}.setNegativeButton("إلغاء",null).show()}
 
- private fun panel(t:String,f:()->Unit){val x=LinearLayout(this);x.orientation=LinearLayout.VERTICAL;x.setPadding(dp(12),dp(12),dp(12),dp(12));x.background=round(Color.WHITE,Color.LTGRAY,15);txt(x,t,15,navy,true);space(x,6);val old=body;body=x;f();body=old;old.addView(x);gap(7)}
- private fun line(a:String,b:String,c:String){val x=LinearLayout(this);x.setPadding(dp(9),dp(7),dp(9),dp(7));x.background=round(Color.WHITE,Color.LTGRAY,10);val l=LinearLayout(this);l.orientation=LinearLayout.VERTICAL;txt(l,a,13,navy,true);txt(l,b,10,Color.GRAY,false);x.addView(l,LinearLayout.LayoutParams(0,-2,1f));txt(x,c,11,blue,true);body.addView(x);gap(4)}
+ private fun panel(t:String,f:()->Unit){
+  val x=LinearLayout(this);x.orientation=LinearLayout.VERTICAL;x.setPadding(dp(12),dp(12),dp(12),dp(12));x.background=round(Color.WHITE,Color.rgb(225,232,241),17);x.elevation=dp(1).toFloat()
+  val h=LinearLayout(this);h.setGravity(Gravity.CENTER_VERTICAL);val dot=TextView(this);dot.text="●";dot.textSize=12f;dot.setTextColor(blue);h.addView(dot,LinearLayout.LayoutParams(dp(22),-2));txt(h,t,15,navy,true);x.addView(h);space(x,7)
+  val old=body;body=x;f();body=old;old.addView(x);gap(8)
+ }
+ private fun line(a:String,b:String,c:String){
+  val x=LinearLayout(this);x.setPadding(dp(10),dp(8),dp(10),dp(8));x.background=round(Color.rgb(249,251,254),Color.rgb(231,237,245),12)
+  val l=LinearLayout(this);l.orientation=LinearLayout.VERTICAL;txt(l,a,13,navy,true);txt(l,b,10,Color.GRAY,false)
+  x.addView(l,LinearLayout.LayoutParams(0,-2,1f));txt(x,c,11,blue,true);body.addView(x);gap(4)
+ }
  private fun title(a:String,b:String){add(a,22,navy,true);add(b,11,Color.GRAY,false);gap(7)}
- private fun addBtn(s:String,c:Int,f:()->Unit){val b=button(s,Color.WHITE,c);b.setOnClickListener{f()};body.addView(b,LinearLayout.LayoutParams(-1,dp(48)))}
- private fun action(s:String,f:()->Unit){val b=button(s,Color.WHITE,navy);b.setOnClickListener{f()};body.addView(b,LinearLayout.LayoutParams(0,dp(50),1f))}
- private fun stat(a:String,b:String,c:Int){val x=LinearLayout(this);x.orientation=LinearLayout.VERTICAL;x.setPadding(dp(10),dp(9),dp(10),dp(9));x.background=round(Color.WHITE,Color.LTGRAY,14);txt(x,a,10,Color.GRAY,false);txt(x,b,18,c,true);body.addView(x,LinearLayout.LayoutParams(0,dp(84),1f))}
- private fun row(f:()->Unit){val old=body;val x=LinearLayout(this);x.orientation=LinearLayout.HORIZONTAL;body=x;f();body=old;old.addView(x)}
- private fun menu(a:String,b:String,f:()->Unit){val x=button(a+"\n"+b,Color.WHITE,navy);x.gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL;x.setOnClickListener{f()};body.addView(x,LinearLayout.LayoutParams(-1,dp(58)));gap(5)}
+ private fun addBtn(s:String,c:Int,f:()->Unit){val b=button(s,Color.WHITE,c);b.textSize=12f;b.setTypeface(null,1);b.setOnClickListener{f()};body.addView(b,LinearLayout.LayoutParams(-1,dp(48)))}
+ private fun action(s:String,f:()->Unit){val b=button(s,Color.WHITE,navy);b.textSize=11f;b.setTypeface(null,1);b.setPadding(dp(5),0,dp(5),0);b.setOnClickListener{f()};body.addView(b,LinearLayout.LayoutParams(0,dp(54),1f))}
+ private fun stat(a:String,b:String,c:Int){
+  val x=LinearLayout(this);x.orientation=LinearLayout.VERTICAL;x.gravity=Gravity.CENTER_VERTICAL;x.setPadding(dp(10),dp(9),dp(10),dp(9));x.background=round(Color.WHITE,Color.rgb(225,232,241),15);x.elevation=dp(1).toFloat()
+  txt(x,a,10,Color.GRAY,false);txt(x,b,18,c,true);body.addView(x,LinearLayout.LayoutParams(0,dp(82),1f))
+ }
+ private fun row(f:()->Unit){val old=body;val x=LinearLayout(this);x.orientation=LinearLayout.HORIZONTAL;x.setPadding(0,0,0,0);body=x;f();body=old;old.addView(x)}
+ private fun menu(a:String,b:String,f:()->Unit){
+  val x=button(a+"\n"+b,Color.WHITE,navy);x.textSize=12f;x.gravity=Gravity.RIGHT or Gravity.CENTER_VERTICAL;x.setPadding(dp(16),0,dp(16),0);x.background=round(Color.WHITE,Color.rgb(225,232,241),13);x.setOnClickListener{f()};body.addView(x,LinearLayout.LayoutParams(-1,dp(64)));gap(6)
+ }
  private fun add(s:String,z:Int,c:Int,b:Boolean){val x=TextView(this);x.text=s;x.textSize=z.toFloat();x.setTextColor(c);if(b)x.setTypeface(null,1);body.addView(x)}
  private fun txt(p:LinearLayout,s:String,z:Int,c:Int,b:Boolean){val x=TextView(this);x.text=s;x.textSize=z.toFloat();x.setTextColor(c);if(b)x.setTypeface(null,1);p.addView(x)}
  private fun empty(s:String){add(s,12,Color.GRAY,false)}
@@ -276,7 +304,7 @@ class MainActivity:Activity(){
  private fun notificationsScreen(){screen("المزيد"){title("مركز الإشعارات والرسائل","سجل الموعد، التشغيل، التحصيل، الصيانة والحركات المالية.");addBtn("＋ إشعار داخلي",blue){notificationDialog()};panel("السجل"){val n=notifications().reversed();if(n.isEmpty())empty("لا توجد إشعارات.");n.forEach{line(it.optString("title"),it.optString("date")+" · "+it.optString("time"),it.optString("status","جديد"))}}}}
  private fun notificationDialog(){val t=field("عنوان الإشعار");val m=field("الرسالة");val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;box.addView(t);space(box,5);box.addView(m);AlertDialog.Builder(this).setTitle("إشعار جديد").setView(box).setPositiveButton("حفظ"){_,_->addNotification(t.text.toString(),m.text.toString());notificationsScreen()}.setNegativeButton("إلغاء",null).show()}
  private fun addNotification(title:String,message:String=""){val a=notificationsA();a.put(JSONObject().put("id",uid()).put("title",title).put("message",message).put("date",day()).put("time",clockTime()).put("status","جديد"));save("notifications",a)}
- private fun settingsPro(){title("إعدادات البئر","بيانات بئر القطع والمشرف والأسعار وأتعاب الإدارة.");val n=field("اسم البئر",p.getString("name","بئر القطع")!!);val sup=field("اسم المشرف",p.getString("supervisor","عبد الواحد الفرح")!!);val h=field("سعر ساعة التشغيل",p.getString("hour","3000")!!,true);val modes=listOf("مبلغ ثابت شهرياً","مبلغ ثابت يومياً","نسبة من الإيرادات","نسبة من الأرباح");val mode=Spinner(this);mode.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,modes);mode.setSelection(max(0,modes.indexOf(managerMode())));val v=field("قيمة الأتعاب / النسبة",p.getString("manager_value","5")!!,true);val role=Spinner(this);role.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,listOf("المالك","المشرف","العامل","الشريك","العميل"));listOf(n,sup,h,mode,v,role).forEach{body.addView(it,LinearLayout.LayoutParams(-1,dp(48)));gap(5)};addBtn("حفظ الإعدادات",blue){p.edit().putString("name",n.text.toString()).putString("hour",h.text.toString()).putString("manager_mode",mode.selectedItem.toString()).putString("manager_value",v.text.toString()).apply();currentRole=role.selectedItem.toString();toast("تم الحفظ")};add("تُسمى هذه العملية داخل النظام «أتعاب الإدارة / عمولة الإدارة» لتوضيح طبيعتها المحاسبية.",11,Color.GRAY,false)}
+ private fun settingsPro(){title("إعدادات البئر","بيانات بئر القطع والمشرف والأسعار وأتعاب الإدارة.");val n=field("اسم البئر",p.getString("name","بئر القطع")!!);val sup=field("اسم المشرف",p.getString("supervisor","عبد الواحد الفرح")!!);val h=field("سعر ساعة التشغيل",p.getString("hour","3000")!!,true);val modes=listOf("مبلغ ثابت شهرياً","مبلغ ثابت يومياً","نسبة من الإيرادات","نسبة من الأرباح");val mode=Spinner(this);mode.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,modes);mode.setSelection(max(0,modes.indexOf(managerMode())));val v=field("قيمة الأتعاب / النسبة",p.getString("manager_value","5")!!,true);val role=Spinner(this);role.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,listOf("المالك","المشرف","المحاسب","العامل"));listOf(n,sup,h,mode,v,role).forEach{body.addView(it,LinearLayout.LayoutParams(-1,dp(48)));gap(5)};addBtn("حفظ الإعدادات",blue){p.edit().putString("name",n.text.toString()).putString("hour",h.text.toString()).putString("manager_mode",mode.selectedItem.toString()).putString("manager_value",v.text.toString()).apply();currentRole=role.selectedItem.toString();toast("تم الحفظ")};add("تُسمى هذه العملية داخل النظام «أتعاب الإدارة / عمولة الإدارة» لتوضيح طبيعتها المحاسبية.",11,Color.GRAY,false)}
  private fun sendWhatsApp(phoneRaw:String,message:String){val phone=phoneRaw.trim().replace("+","").replace(" ","");if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://wa.me/$phone?text="+Uri.encode(message))))}catch(_:Exception){toast("تعذر فتح WhatsApp")}}
  private fun sendSms(phone:String,message:String){if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{val i=Intent(Intent.ACTION_SENDTO).apply{data=Uri.parse("smsto:"+Uri.encode(phone));putExtra("sms_body",message)};startActivity(i)}catch(_:Exception){toast("لا يوجد تطبيق SMS متاح")}}
 

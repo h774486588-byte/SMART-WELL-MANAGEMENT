@@ -197,4 +197,82 @@ class MainActivity:Activity(){
  private fun sendWhatsApp(phoneRaw:String,message:String){val phone=phoneRaw.trim().replace("+","").replace(" ","");if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://wa.me/$phone?text="+Uri.encode(message))))}catch(_:Exception){toast("تعذر فتح WhatsApp")}}
  private fun sendSms(phone:String,message:String){if(phone.isBlank()){toast("لا يوجد رقم هاتف");return};try{val i=Intent(Intent.ACTION_SENDTO).apply{data=Uri.parse("smsto:"+Uri.encode(phone));putExtra("sms_body",message)};startActivity(i)}catch(_:Exception){toast("لا يوجد تطبيق SMS متاح")}}
 
+
+ private fun partnerHoursA()=arr("partner_hours")
+ private fun partnerHours()=list(partnerHoursA())
+ private fun advancesA()=arr("supervisor_advances")
+ private fun advances()=list(advancesA())
+ private fun coolingA()=arr("cooling_logs")
+ private fun coolingLogs()=list(coolingA())
+ private fun dieselA()=arr("diesel_logs")
+ private fun dieselLogs()=list(dieselA())
+ private fun oilA()=arr("oil_changes")
+ private fun oilChanges()=list(oilA())
+ private fun totalOperatingHours()=list(salesA()).sumOf{it.optInt("minutes")}/60.0
+ private fun minutesBetween(a:String,b:String):Int{fun m(x:String):Int{val z=x.split(":");return (z.getOrNull(0)?.toIntOrNull()?:0)*60+(z.getOrNull(1)?.toIntOrNull()?:0)};val x=m(a);val y=m(b);return if(y>=x)y-x else y+1440-x}
+ private fun dieselStock()=dieselLogs().sumOf{if(it.optString("type")=="شراء")it.optDouble("liters") else -it.optDouble("liters")}
+ private fun partnerAdvanceShare(id:String)=advances().sumOf{it.optDouble("amount")}*partnerShare(id)
+ private fun wellAlerts():List<String>{
+  val out=mutableListOf<String>();val last=oilChanges().lastOrNull()
+  if(last!=null&&totalOperatingHours()-last.optDouble("engineHours")>=last.optDouble("interval",250.0))out.add("🛢️ حان موعد تغيير زيت المحرك حسب ساعات التشغيل.")
+  val stock=dieselStock();if(stock<=(p.getString("diesel_alert","50")!!.toDoubleOrNull()?:50.0))out.add("⛽ مستوى الديزل منخفض: \${String.format(Locale.US,"%.1f",stock)} لتر.")
+  val due=maint().count{it.optString("status")!="مكتملة"&&it.optString("due")<=day()};if(due>0)out.add("🔧 توجد \$due مهمة صيانة مستحقة.")
+  return out
+ }
+ private fun createAlertChannel(){if(Build.VERSION.SDK_INT>=26){val c=NotificationChannel(NOTIFY_CHANNEL,"تنبيهات البئر",NotificationManager.IMPORTANCE_HIGH);c.description="تنبيهات الزيت والديزل والصيانة";getSystemService(NotificationManager::class.java).createNotificationChannel(c)}}
+ private fun notifyAlerts(){
+  if(Build.VERSION.SDK_INT>=33&&checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)return
+  wellAlerts().forEachIndexed{i,msg->if(!p.getBoolean("alert_\$i",false)){p.edit().putBoolean("alert_\$i",true).apply();getSystemService(NotificationManager::class.java).notify(100+i,NotificationCompat.Builder(this,NOTIFY_CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle("تنبيه بئر القطع").setContentText(msg).setStyle(NotificationCompat.BigTextStyle().bigText(msg)).setAutoCancel(true).build())}}
+ }
+ private fun wellScreen(){
+  screen("البئر"){title("إدارة البئر","بئر القطع · المشرف عبد الواحد الفرح")
+   val hours=monthSales().sumOf{it.optInt("minutes")}/60.0;val cool=coolingLogs().filter{it.optString("date")==day()}.sumOf{it.optInt("minutes")}/60.0;val stock=dieselStock()
+   row{stat("تشغيل اليوم",String.format(Locale.US,"%.1f",todaySales().sumOf{it.optInt("minutes")}/60.0),blue);stat("تبريد اليوم",String.format(Locale.US,"%.1f",cool),navy)}
+   row{stat("ساعات الشهر",String.format(Locale.US,"%.1f",hours),green);stat("رصيد الديزل",String.format(Locale.US,"%.1f لتر",stock),orange)}
+   gap(7);row{action("▶ تشغيل البئر"){startPump()};action("📅 المواعيد"){bookingsScreen()}}
+   row{action("⛽ إدارة الديزل"){dieselScreen()};action("❄ ساعات التبريد"){coolingScreen()}}
+   row{action("🛢️ إدارة الزيت"){oilScreen()};action("💸 المخروجات"){expensesScreen()}}
+   row{action("🔧 الصيانة"){maintenance()};action("⚙ إعدادات البئر"){settingsPro()}}
+   panel("حالة الزيت"){val last=oilChanges().lastOrNull();if(last==null)empty("لم يتم تسجيل تغيير زيت بعد.") else {val current=totalOperatingHours();val base=last.optDouble("engineHours");val interval=last.optDouble("interval",250.0);val used=max(0.0,current-base);line("الزيت الحالي","استخدم \${String.format(Locale.US,"%.1f",used)} من \${String.format(Locale.US,"%.0f",interval)} ساعة",if(used>=interval)"يحتاج تغيير" else "سليم")}}
+   panel("التشغيل اليومي"){todaySales().forEach{line(find(it.optString("customerId"))?.optString("name")?:"مزارع",it.optString("time")+" · "+it.optInt("minutes")+" دقيقة",money(it.optDouble("total")))}}
+  }
+ }
+ private fun partnerHoursScreen(id:String?=null){
+  screen("الشركاء"){title("ساعات الشركاء","تسجيل بداية ونهاية كل دور للمزارع وربطه بالشريك.");addBtn("＋ تسجيل ساعات جديدة",blue){partnerHourDialog()}
+   panel("سجل الساعات"){val rows=if(id==null)partnerHours() else partnerHours().filter{it.optString("partnerId")==id};if(rows.isEmpty())empty("لا توجد ساعات مسجلة.");rows.sortedByDescending{it.optString("date")}.forEach{r->val pn=partners().firstOrNull{it.optString("id")==r.optString("partnerId")}?.optString("name")?:"شريك";val fn=find(r.optString("farmerId"))?.optString("name")?:"مزارع";line("$pn ← $fn",r.optString("date")+" · "+r.optString("start")+" - "+r.optString("end"),String.format(Locale.US,"%.2f ساعة",r.optInt("minutes")/60.0))}}
+  }
+ }
+ private fun partnerHourDialog(){
+  if(partners().isEmpty()){toast("أضف الشركاء أولاً");return};if(customers().isEmpty()){toast("أضف المزارعين أولاً");return}
+  val ps=partners();val cs=customers();val psp=Spinner(this);psp.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,ps.map{it.optString("name")});val csp=Spinner(this);csp.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,cs.map{it.optString("name")});val d=field("التاريخ",day());val st=field("من الساعة","07:00");val en=field("إلى الساعة","10:00");val note=field("البيان / رقم الدور")
+  val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;listOf(psp,csp,d,st,en,note).forEach{box.addView(it);space(box,4)}
+  AlertDialog.Builder(this).setTitle("تسجيل ساعات الشريك").setView(box).setPositiveButton("حفظ"){_,_->val mins=minutesBetween(st.text.toString(),en.text.toString());if(mins<=0){toast("وقت النهاية يجب أن يكون بعد البداية");return@setPositiveButton};val a=partnerHoursA();a.put(JSONObject().put("id",uid()).put("partnerId",ps[psp.selectedItemPosition].optString("id")).put("farmerId",cs[csp.selectedItemPosition].optString("id")).put("date",d.text.toString()).put("start",st.text.toString()).put("end",en.text.toString()).put("minutes",mins).put("note",note.text.toString()));save("partner_hours",a);addNotification("تم تسجيل \${String.format(Locale.US,"%.2f",mins/60.0)} ساعة للشريك");partnerHoursScreen()}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun advanceDialog(){
+  val am=field("قيمة التقديم","0",true);val d=field("التاريخ",day());val note=field("البيان","تقديم من المشرف للبئر");val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;listOf(am,d,note).forEach{box.addView(it);space(box,4)}
+  AlertDialog.Builder(this).setTitle("تقديم المشرف للبئر").setView(box).setPositiveButton("حفظ"){_,_->val v=am.text.toString().toDoubleOrNull()?:0.0;if(v<=0){toast("أدخل قيمة صحيحة");return@setPositiveButton};val a=advancesA();a.put(JSONObject().put("id",uid()).put("amount",v).put("date",d.text.toString()).put("note",note.text.toString()).put("supervisor",p.getString("supervisor","عبد الواحد الفرح")));save("supervisor_advances",a);addNotification("تم تسجيل تقديم للمشروع بقيمة \${money(v)}");partnersScreen()}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun dieselScreen(){
+  screen("البئر"){title("إدارة الديزل","المشتريات والاستهلاك والرصيد الفعلي.");val stock=dieselStock();row{stat("الرصيد",String.format(Locale.US,"%.1f لتر",stock),green);stat("شراء الشهر",String.format(Locale.US,"%.1f لتر",dieselLogs().filter{it.optString("type")=="شراء"&&it.optString("date").startsWith(day().substring(0,7))}.sumOf{it.optDouble("liters")}),blue)}
+   row{action("＋ شراء ديزل"){dieselDialog(true)};action("− تسجيل استهلاك"){dieselDialog(false)}};panel("الحركة"){dieselLogs().reversed().forEach{line(if(it.optString("type")=="شراء")"شراء ديزل" else "استهلاك",it.optString("date")+" · "+String.format(Locale.US,"%.1f لتر",it.optDouble("liters")),money(it.optDouble("total")))}}}
+ }
+ private fun dieselDialog(buy:Boolean){
+  val l=field("الكمية باللتر","0",true);val price=field(if(buy)"سعر اللتر" else "ملاحظات","0",buy);val note=if(buy)field("البيان","") else field("البيان","استهلاك تشغيل اليوم");val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;box.addView(l);space(box,4);box.addView(price);space(box,4);box.addView(note)
+  AlertDialog.Builder(this).setTitle(if(buy)"شراء ديزل" else "استهلاك ديزل").setView(box).setPositiveButton("حفظ"){_,_->val liters=l.text.toString().toDoubleOrNull()?:0.0;if(liters<=0){toast("أدخل كمية صحيحة");return@setPositiveButton};val pr=if(buy)price.text.toString().toDoubleOrNull()?:0.0 else 0.0;val total=liters*pr;val a=dieselA();a.put(JSONObject().put("id",uid()).put("type",if(buy)"شراء" else "استهلاك").put("date",day()).put("liters",liters).put("price",pr).put("total",total).put("note",note.text.toString()));save("diesel_logs",a);if(buy){val e=expensesA();e.put(JSONObject().put("id",uid()).put("date",day()).put("desc","شراء ديزل").put("amount",total));save("expenses",e)};wellScreen()}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun coolingScreen(){
+  screen("البئر"){title("ساعات التبريد اليومية","تسجيل بداية ونهاية كل فترة تبريد للمحرك.");addBtn("＋ تسجيل فترة تبريد",blue){coolingDialog()};panel("سجل اليوم"){val x=coolingLogs().filter{it.optString("date")==day()};if(x.isEmpty())empty("لم تسجل فترات تبريد اليوم.");x.forEach{line(it.optString("date"),it.optString("start")+" - "+it.optString("end"),String.format(Locale.US,"%.2f ساعة",it.optInt("minutes")/60.0)))};add("إجمالي اليوم: "+String.format(Locale.US,"%.2f ساعة",x.sumOf{it.optInt("minutes")}/60.0),15,navy,true)}}
+ }
+ private fun coolingDialog(){
+  val st=field("من الساعة","12:00");val en=field("إلى الساعة","13:00");val note=field("ملاحظات");val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;listOf(st,en,note).forEach{box.addView(it);space(box,4)}
+  AlertDialog.Builder(this).setTitle("فترة تبريد").setView(box).setPositiveButton("حفظ"){_,_->val mins=minutesBetween(st.text.toString(),en.text.toString());if(mins<=0){toast("الوقت غير صالح");return@setPositiveButton};val a=coolingA();a.put(JSONObject().put("id",uid()).put("date",day()).put("start",st.text.toString()).put("end",en.text.toString()).put("minutes",mins).put("note",note.text.toString()));save("cooling_logs",a);wellScreen()}.setNegativeButton("إلغاء",null).show()
+ }
+ private fun oilScreen(){
+  screen("البئر"){title("إدارة زيت المحرك","متابعة عمر الزيت حسب ساعات تشغيل المحرك.");val current=totalOperatingHours();val last=oilChanges().lastOrNull();if(last==null){add("لا يوجد سجل زيت. سجّل أول تغيير زيت لتفعيل التنبيه.",12,red,true)}else{val used=current-last.optDouble("engineHours");val interval=last.optDouble("interval",250.0);row{stat("ساعات التشغيل منذ التغيير",String.format(Locale.US,"%.1f",used),if(used>=interval)red else green);stat("المتبقي",String.format(Locale.US,"%.1f",max(0.0,interval-used)),orange)}};addBtn("🛢️ تسجيل تغيير الزيت",blue){oilDialog()};panel("سجل تغيير الزيت"){oilChanges().reversed().forEach{line(it.optString("date"),"عند "+String.format(Locale.US,"%.1f",it.optDouble("engineHours"))+" ساعة تشغيل","الفاصل "+String.format(Locale.US,"%.0f",it.optDouble("interval"))+" ساعة")}}}
+ }
+ private fun oilDialog(){
+  val interval=field("الفاصل بين تغييرات الزيت بالساعات",p.getString("oil_interval","250")!!,true);val note=field("نوع الزيت / الملاحظات","");val box=LinearLayout(this);box.orientation=LinearLayout.VERTICAL;listOf(interval,note).forEach{box.addView(it);space(box,4)}
+  AlertDialog.Builder(this).setTitle("تسجيل تغيير الزيت").setView(box).setPositiveButton("حفظ"){_,_->val v=interval.text.toString().toDoubleOrNull()?:250.0;val a=oilA();a.put(JSONObject().put("id",uid()).put("date",day()).put("engineHours",totalOperatingHours()).put("interval",v).put("note",note.text.toString()));save("oil_changes",a);p.edit().putString("oil_interval",interval.text.toString()).apply();toast("تم تسجيل تغيير الزيت");oilScreen()}.setNegativeButton("إلغاء",null).show()
+ }
+
 }

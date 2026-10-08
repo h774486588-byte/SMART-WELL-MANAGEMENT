@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220"><meta name="description" content="نظام إدارة البئر الارتوازي الذكي">
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
+<title>البئر الذكي | إدارة البئر الارتوازي</title>
+</head>
+<body>
+<aside class="side" id="side">
+  <div class="brand"><div class="logo">💧</div><div><b>البئر الذكي</b><small>SMART WELL</small></div></div>
+  <nav>
+    <button data-page="dashboard" class="active">⌂ <span>الرئيسية</span></button>
+    <button data-page="bookings">◷ <span>الحجوزات والأدوار</span></button>
+    <button data-page="pumping">▶ <span>الضخ والتعبئة</span></button>
+    <button data-page="customers">♙ <span>العملاء والمزارعون</span></button>
+    <button data-page="ledger">▤ <span>كشف الحساب</span></button>
+    <button data-page="payments">﷼ <span>التحصيل والديون</span></button>
+    <button data-page="shifts">▣ <span>الورديات والصندوق</span></button>
+    <button data-page="expenses">▥ <span>المصروفات والديزل</span></button>
+    <button data-page="maintenance">⚙ <span>الصيانة</span></button>
+    <button data-page="reports">▦ <span>التقارير</span></button>
+    <button data-page="settings">⚙ <span>الإعدادات</span></button>
+  </nav>
+  <footer><i></i> يعمل دون اتصال</footer>
+</aside>
+<main>
+<header><button id="menu">☰</button><div><b id="title">لوحة التحكم</b><small id="date"></small></div><div class="head-actions"><span id="status">● محلي</span><button id="backup">⇩</button><label>⇧<input id="restore" type="file" accept=".json"></label></div></header>
+<section id="app"></section>
+</main>
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+<script src="app.js"></script>
+</body></html>

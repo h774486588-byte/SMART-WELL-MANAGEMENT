@@ -32,6 +32,7 @@ class MainActivity:Activity(){
   if(!p.contains("oil_interval"))p.edit().putString("oil_interval","250").apply()
   createAlertChannel();if(Build.VERSION.SDK_INT>=33&&checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"),800);screen("لوحة التحكم"){dashboard()}
  }
+ override fun onResume(){super.onResume();if(::body.isInitialized)notifyAlerts()}
 
  private fun screen(t:String,f:()->Unit){
   val root=LinearLayout(this);root.orientation=LinearLayout.VERTICAL;root.setBackgroundColor(bg);root.layoutDirection=View.LAYOUT_DIRECTION_RTL
@@ -47,7 +48,7 @@ class MainActivity:Activity(){
  }
 
  private fun dashboard(){
-  add("بئر القطع",24,navy,true);add("المشرف: عبد الواحد الفرح",12,Color.GRAY,false);add(date(),10,Color.GRAY,false);gap(8)
+  add(p.getString("name","بئر القطع")!!,24,navy,true);add("المشرف: "+p.getString("supervisor","عبد الواحد الفرح"),12,Color.GRAY,false);add(date(),10,Color.GRAY,false);gap(8)
   val s=todaySales();val rev=s.sumOf{it.optDouble("total")};val pay=todayPay();val exp=todayExp();val min=s.sumOf{it.optInt("minutes")}
   row{stat("إيرادات اليوم",money(rev),blue);stat("التحصيل",money(pay),green)};row{stat("ساعات التشغيل",String.format(Locale.US,"%.1f",min/60.0),navy);stat("مصروفات اليوم",money(exp),red)}
   gap(8);add("الإدارة الرئيسية",16,navy,true)
@@ -216,16 +217,16 @@ class MainActivity:Activity(){
   val out=mutableListOf<String>();val last=oilChanges().lastOrNull()
   if(last!=null&&totalOperatingHours()-last.optDouble("engineHours")>=last.optDouble("interval",250.0))out.add("🛢️ حان موعد تغيير زيت المحرك حسب ساعات التشغيل.")
   val stock=dieselStock();if(stock<=(p.getString("diesel_alert","50")!!.toDoubleOrNull()?:50.0))out.add("⛽ مستوى الديزل منخفض: \${String.format(Locale.US,"%.1f",stock)} لتر.")
-  val due=maint().count{it.optString("status")!="مكتملة"&&it.optString("due")<=day()};if(due>0)out.add("🔧 توجد \$due مهمة صيانة مستحقة.")
+  val due=maint().count{it.optString("status")!="مكتملة"&&it.optString("due")<=day()};if(due>0)out.add("🔧 توجد "+due+" مهمة صيانة مستحقة.")
   return out
  }
  private fun createAlertChannel(){if(Build.VERSION.SDK_INT>=26){val c=NotificationChannel(NOTIFY_CHANNEL,"تنبيهات البئر",NotificationManager.IMPORTANCE_HIGH);c.description="تنبيهات الزيت والديزل والصيانة";getSystemService(NotificationManager::class.java).createNotificationChannel(c)}}
  private fun notifyAlerts(){
   if(Build.VERSION.SDK_INT>=33&&checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)return
-  wellAlerts().forEachIndexed{i,msg->if(!p.getBoolean("alert_\$i",false)){p.edit().putBoolean("alert_\$i",true).apply();getSystemService(NotificationManager::class.java).notify(100+i,NotificationCompat.Builder(this,NOTIFY_CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle("تنبيه بئر القطع").setContentText(msg).setStyle(NotificationCompat.BigTextStyle().bigText(msg)).setAutoCancel(true).build())}}
+  wellAlerts().forEachIndexed{i,msg->if(!p.getBoolean("alert_"+i,false)){p.edit().putBoolean("alert_"+i,true).apply();getSystemService(NotificationManager::class.java).notify(100+i,NotificationCompat.Builder(this,NOTIFY_CHANNEL).setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle("تنبيه بئر القطع").setContentText(msg).setStyle(NotificationCompat.BigTextStyle().bigText(msg)).setAutoCancel(true).build())}}
  }
  private fun wellScreen(){
-  screen("البئر"){title("إدارة البئر","بئر القطع · المشرف عبد الواحد الفرح")
+  screen("البئر"){title("إدارة البئر",p.getString("name","بئر القطع")+" · المشرف "+p.getString("supervisor","عبد الواحد الفرح"))
    val hours=monthSales().sumOf{it.optInt("minutes")}/60.0;val cool=coolingLogs().filter{it.optString("date")==day()}.sumOf{it.optInt("minutes")}/60.0;val stock=dieselStock()
    row{stat("تشغيل اليوم",String.format(Locale.US,"%.1f",todaySales().sumOf{it.optInt("minutes")}/60.0),blue);stat("تبريد اليوم",String.format(Locale.US,"%.1f",cool),navy)}
    row{stat("ساعات الشهر",String.format(Locale.US,"%.1f",hours),green);stat("رصيد الديزل",String.format(Locale.US,"%.1f لتر",stock),orange)}

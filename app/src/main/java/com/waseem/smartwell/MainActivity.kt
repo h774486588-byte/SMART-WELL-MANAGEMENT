@@ -69,7 +69,7 @@ class MainActivity:Activity(){
    menu("👷 العاملون","الأجور والاستحقاقات وسجل التشغيل"){workersScreen()};
    menu("﷼ التحصيل والديون","أرصدة العملاء والتحصيلات"){screen("المزيد"){payments()}};
    menu("💰 الإيرادات","تسجيل ومراجعة الأموال الداخلة"){screen("المزيد"){revenuesScreen()}};
-   menu("▥ المصروفات والديزل","التكاليف وتوزيعها على الشركاء"){screen("المزيد"){expenses()}};
+   menu("▥ المصروفات والديزل","التكاليف وتوزيعها على الشركاء"){screen("المزيد"){expensesScreen()}};
    menu("📊 الأرباح والخسائر","صافي النتيجة وتوزيعها على الشركاء"){screen("المزيد"){profitLossScreen()}};
    menu("📄 الكشوفات","كشوف العملاء والشركاء والعاملين"){screen("المزيد"){reports()}};
    menu("🔔 الإشعارات والرسائل","تنبيهات ورسائل WhatsApp وSMS"){notificationsScreen()};
@@ -79,7 +79,7 @@ class MainActivity:Activity(){
  }
 
  private fun payments(){title("التحصيل والديون","متابعة المبالغ المستحقة.");addBtn("＋ تسجيل تحصيل",green){paymentDialog()};panel("الأرصدة"){val x=customers().map{it to balance(it.optString("id"))}.filter{it.second>0};if(x.isEmpty())empty("لا توجد ديون.");x.forEach{line(it.first.optString("name"),it.first.optString("phone"),money(it.second))}}}
- private fun expenses(){title("المصروفات والديزل","التكاليف التشغيلية.");row{action("＋ مصروف"){expenseDialog(false)};action("＋ ديزل"){expenseDialog(true)}};panel("الحركات"){expenses().reversed().forEach{line(it.optString("desc"),it.optString("date"),money(it.optDouble("amount")))}}}
+ private fun expensesScreen(){title("المصروفات والديزل","التكاليف التشغيلية.");row{action("＋ مصروف"){expenseDialog(false)};action("＋ ديزل"){expenseDialog(true)}};panel("الحركات"){expenses().reversed().forEach{line(it.optString("desc"),it.optString("date"),money(it.optDouble("amount")))}}}
  private fun maintenance(){title("الصيانة","جدولة المهام الدورية.");addBtn("＋ مهمة صيانة",blue){maintenanceDialog()};panel("المهام"){maint().forEach{line(it.optString("title"),it.optString("due"),it.optString("status"))}}}
  private fun reports(){title("التقارير","ملخص الشهر الحالي.");val r=monthSales().sumOf{it.optDouble("total")};val p=monthPays().sumOf{it.optDouble("amount")};val e=monthExp().sumOf{it.optDouble("amount")};row{stat("الإيرادات",money(r),blue);stat("التحصيل",money(p),green)};row{stat("التكاليف",money(e),red);stat("الصافي",money(r-e),navy)};panel("ملخص"){add("عدد العملاء: "+customers().size,13,navy,false);add("عدد العمليات: "+monthSales().size,13,navy,false);add("الديون: "+money(customers().sumOf{max(0.0,balance(it.optString("id")))}),13,red,true)}}}
  private fun settings(){title("الإعدادات","بيانات البئر والأسعار.");val n=field("اسم البئر",p.getString("name","البئر الارتوازي الذكي")!!);val h=field("سعر الساعة",p.getString("hour","3000")!!,true);val t=field("سعر النقلة",p.getString("trip","0")!!,true);listOf(n,h,t).forEach{body.addView(it,LinearLayout.LayoutParams(-1,dp(48)));gap(6)};addBtn("حفظ الإعدادات",blue){p.edit().putString("name",n.text.toString()).putString("hour",h.text.toString()).putString("trip",t.text.toString()).apply();toast("تم الحفظ")};addBtn("⇩ تصدير نسخة",Color.DKGRAY){backup()}}
